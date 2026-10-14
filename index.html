@@ -168,7 +168,6 @@ let teacherRecords = JSON.parse(localStorage.getItem('kancil_teacher_records_v2'
 let currentAudioBlob = null, currentVideoBlob = null;
 let currentAudioUrl = '', currentVideoUrl = '';
 
-// --- Format Nama: Huruf besar permulaan setiap perkataan/huruf besar pertama ---
 function formatStudentName(name) {
   if (!name) return 'Tanpa Nama';
   return name.trim().toLowerCase().replace(/(^\w{1})|(\s+\w{1})/g, match => match.toUpperCase());
@@ -282,13 +281,12 @@ function say(w){
 
 function format(w){let x=words.find(v=>v.w===w);return `<span class="first">${x.s[0]}</span><span class="rest">${x.s.slice(1).join('')}</span>`}
 
-// Senarai 12 perkataan di muka depan
 $('vocab').innerHTML=words.map(x=>`<div class="card"><div class="animal">${x.e}</div><div class="word">${format(x.w)}</div></div>`).join('');
 
 // --- Misi 1: Padankan (6 Soalan) ---
 function resetMatch(){ matchI=0; matchScore=0; renderMatch(); }
 function renderMatch(){
-  let activeWords = words.slice(0, 6); // 6 soalan
+  let activeWords = words.slice(0, 6);
   let x = activeWords[matchI];
   $('matchbar').style.width = (matchI/6*100) + '\%';$('matchfeedback').textContent = '';
   if(!x){
@@ -319,7 +317,6 @@ function answerMatch(w, b){
     b.classList.add('wrong');
     $('matchfeedback').textContent = 'Cuba lagi, kamu pasti boleh!';
     playWrongSound();
-    // Salah: tidak beri markah, teruskan ke soalan seterusnya tanpa penalti masa
     document.querySelectorAll('#matchchoices button').forEach(e=>e.disabled=true);
     setTimeout(()=>{ matchI++; renderMatch(); }, 1000);
   }
@@ -328,7 +325,7 @@ function answerMatch(w, b){
 // --- Misi 2: Suku Kata (6 Soalan) ---
 function resetSyll(){ syllI=0; syllScore=0; chosen=[]; renderSyll(); }
 function renderSyll(){
-  let activeWords = words.slice(6, 12); // 6 soalan seterusnya
+  let activeWords = words.slice(6, 12);
   let x = activeWords[syllI];
   $('syllbar').style.width = (syllI/6*100) + '%';
   $('syllfeedback').textContent = '';$('assembled').innerHTML = '';
@@ -349,17 +346,23 @@ function renderSyll(){
 function pickSyll(b){
   let activeWords = words.slice(6, 12);
   let x = activeWords[syllI], i = Number(b.dataset.index);
+  
   if(i !== chosen.length){
-    $('syllfeedback').textContent = 'Cuba suku kata yang lain dahulu. 🌿';
+    // Kesilapan susun suku kata: Bunyi salah, papar mesej, teruskan ke soalan seterusnya tanpa markah
+    $('syllfeedback').textContent = 'Cuba lagi, kamu pasti boleh!';
     playWrongSound();
+    document.querySelectorAll('#syllchoices button').forEach(e=>e.disabled=true);
+    setTimeout(()=>{ syllI++; renderSyll(); }, 1100);
     return;
   }
+
   chosen.push(i);
   b.disabled = true;
   b.style.opacity = '.4';
   playTone(440, 0.1, 'sine');
   $('assembled').innerHTML = chosen.map((n,j)=>`<span class="syllable ${j===0?'first':''}">${x.s[n]}</span>`).join('');
   $('syllfeedback').textContent = 'Bagus, teruskan!';
+  
   if(chosen.length === x.s.length){
     $('syllfeedback').textContent = 'Bagus sekali!';
     playCorrectSound();
@@ -458,15 +461,14 @@ function submitMission(){
     return;
   }
   let formattedName = formatStudentName(rawName);
-  let totalActivityScore = matchScore + syllScore; // Maksimum 12 (6 padan + 6 suku kata)
+  let totalActivityScore = matchScore + syllScore;
 
-  // Simpan dalam senarai guru
   let recordItem = {
     name: formattedName,
     activityScore: totalActivityScore,
     audioUrl: currentAudioUrl || '',
     videoUrl: currentVideoUrl || '',
-    readScore: '', // Diisi guru
+    readScore: '',
     date: new Date().toLocaleDateString('ms-MY')
   };
   teacherRecords.push(recordItem);
@@ -512,28 +514,4 @@ function updateReadScore(index, val){
   teacherRecords[index].readScore = val;
   localStorage.setItem('kancil_teacher_records_v2', JSON.stringify(teacherRecords));
   let readNum = Number(val) || 0;
-  let actNum = Number(teacherRecords[index].activityScore) || 0;
-  $(`total_${index}`).textContent = actNum + readNum;
-}
-
-function deleteRecord(index){
-  if(confirm('Padam rekod murid ini?')){
-    teacherRecords.splice(index, 1);
-    localStorage.setItem('kancil_teacher_records_v2', JSON.stringify(teacherRecords));
-    renderTeacherTable();
-  }
-}
-
-function clearTeacherRecords(){
-  if(confirm('Adakah anda pasti mahu mengosongkan semua rekod murid?')){
-    teacherRecords = [];
-    localStorage.removeItem('kancil_teacher_records_v2');
-    renderTeacherTable();
-  }
-}
-
-resetMatch();
-resetSyll();
-</script>
-</body>
-</html>
+  let actNum = Number(teacherRecords[index].activityScore)
